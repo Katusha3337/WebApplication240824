@@ -1,0 +1,298 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Список автомобилей</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <h2>Список автомобилей</h2>
+            <form name="searchForm">
+                <div class="mb-3">
+                    <label class="form-label" for="make">Марка:</label>
+                    <select class="form-control" name="make">
+                        <option value="">Все</option>
+                        <option value="Hyundai">Hyundai</option>
+                        <option value="Audi">Audi</option>
+                        <option value="Mercedes">Mercedes</option>
+                        <option value="Toyota">Toyota</option>
+                        <option value="Ford">Ford</option>
+                        <option value="BMW">BMW</option>
+                        <option value="Honda">Honda</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="model" class="form-label">Модель:</label>
+                    <select class="form-control" name="model">
+                        <option value="">Все</option>
+                        <option value="Elantra">Elantra</option>
+                        <option value="A4">A4</option>
+                        <option value="C-Class">C-Class</option>
+                        <option value="Camry">Camry</option>
+                        <option value="Focus">Focus</option>
+                        <option value="X5">X5</option>
+                        <option value="Civic">Civic</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="year" class="form-label">Год:</label>
+                    <select class="form-control" name="year">
+                        <option value="">Все</option>
+                        <option value="2021">2021</option>
+                        <option value="2020">2020</option>
+                        <option value="2019">2019</option>
+                        <option value="2022">2022</option>
+                        <option value="2018">2018</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-sm btn-primary">Поиск</button>
+                    <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+                </div>
+            </form>
+
+            <h2>Добавить автомобиль</h2>
+            <form name="carForm">
+                <input type="hidden" name="id" value="0" />
+                <div class="mb-3">
+                    <label class="form-label" for="make">Марка:</label>
+                    <select class="form-control" name="make">
+                        <option value="Hyundai">Hyundai</option>
+                        <option value="Audi">Audi</option>
+                        <option value="Mercedes">Mercedes</option>
+                        <option value="Toyota">Toyota</option>
+                        <option value="Ford">Ford</option>
+                        <option value="BMW">BMW</option>
+                        <option value="Honda">Honda</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="model" class="form-label">Модель:</label>
+                    <input class="form-control" name="model" />
+                </div>
+                <div class="mb-3">
+                    <label for="year" class="form-label">Год:</label>
+                    <input class="form-control" name="year" />
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                    <a id="resetCarForm" class="btn btn-sm btn-primary">Сбросить</a>
+                </div>
+            </form>
+
+            <table class="table table-condensed table-striped table-bordered">
+                <thead><tr><th>Марка</th><th>Модель</th><th>Год</th><th></th></tr></thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        // Получение всех автомобилей
+        async function getCars() {
+            const response = await fetch("/api/cars", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const cars = await response.json();
+                const rows = document.querySelector("tbody");
+                rows.innerHTML = "";
+                cars.forEach(car => rows.append(row(car)));
+            }
+        }
+
+        // Фильтрация автомобилей
+        async function filterCars(make, model, year) {
+            const response = await fetch("/api/cars", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const cars = await response.json();
+                const rows = document.querySelector("tbody");
+                rows.innerHTML = "";
+                cars.filter(car =>
+                    (make === "" || car.make === make) &&
+                    (model === "" || car.model === model) &&
+                    (year === "" || car.year.toString() === year)
+                ).forEach(car => rows.append(row(car)));
+            }
+        }
+
+        // Получение одного автомобиля
+        async function getCar(id) {
+            const response = await fetch("/api/cars/" + id, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const car = await response.json();
+                const form = document.forms["carForm"];
+                form.elements["id"].value = car.id;
+                form.elements["make"].value = car.make;
+                form.elements["model"].value = car.model;
+                form.elements["year"].value = car.year;
+            } else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // Добавление автомобиля
+        async function createCar(carMake, carModel, carYear) {
+            const response = await fetch("api/cars", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    make: carMake,
+                    model: carModel,
+                    year: parseInt(carYear, 10)
+                })
+            });
+            if (response.ok === true) {
+                const car = await response.json();
+                resetCarForm();
+                document.querySelector("tbody").append(row(car));
+            } else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // Изменение автомобиля
+        async function editCar(carId, carMake, carModel, carYear) {
+            const response = await fetch("api/cars", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: carId,
+                    make: carMake,
+                    model: carModel,
+                    year: parseInt(carYear, 10)
+                })
+            });
+            if (response.ok === true) {
+                const car = await response.json();
+                resetCarForm();
+                document.querySelector("tr[data-rowid='" + car.id + "']").replaceWith(row(car));
+            } else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // Удаление автомобиля
+        async function deleteCar(id) {
+            const response = await fetch("/api/cars/" + id, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const car = await response.json();
+                document.querySelector("tr[data-rowid='" + car.id + "']").remove();
+            } else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // сброс данных формы после отправки
+        function resetCarForm() {
+            const form = document.forms["carForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+
+        // сброс значений формы поиска и отображение всех автомобилей
+        function resetSearch() {
+            const form = document.forms["searchForm"];
+            form.reset();
+            getCars(); // Обновляем таблицу, чтобы показать все автомобили
+        }
+
+        // создание строки для таблицы
+        function row(car) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", car.id);
+
+            const makeTd = document.createElement("td");
+            makeTd.append(car.make);
+            tr.append(makeTd);
+
+            const modelTd = document.createElement("td");
+            modelTd.append(car.model);
+            tr.append(modelTd);
+
+            const yearTd = document.createElement("td");
+            yearTd.append(car.year);
+            tr.append(yearTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("a");
+            editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", e => {
+                e.preventDefault();
+                getCar(car.id);
+            });
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("a");
+            removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", e => {
+                e.preventDefault();
+                deleteCar(car.id);
+            });
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        // сброс значений формы поиска
+        document.getElementById("reset").addEventListener("click", e => {
+            e.preventDefault();
+            resetSearch();
+        });
+
+        // сброс значений формы добавления автомобиля
+        document.getElementById("resetCarForm").addEventListener("click", e => {
+            e.preventDefault();
+            resetCarForm();
+        });
+
+        // отправка формы поиска
+        document.forms["searchForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            const form = document.forms["searchForm"];
+            const make = form.elements["make"].value;
+            const model = form.elements["model"].value;
+            const year = form.elements["year"].value;
+            filterCars(make, model, year);
+        });
+
+        // отправка формы добавления автомобиля
+        document.forms["carForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            const form = document.forms["carForm"];
+            const id = form.elements["id"].value;
+            const make = form.elements["make"].value;
+            const model = form.elements["model"].value;
+            const year = form.elements["year"].value;
+            if (id == 0)
+                createCar(make, model, year);
+            else
+                editCar(id, make, model, year);
+        });
+
+        // загрузка автомобилей
+        getCars();
+    </script>
+</body>
+</html>
